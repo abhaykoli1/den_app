@@ -1,0 +1,36 @@
+name: rowdys_den_app
+description: "Rowdy's Den — Club Billing · Flutter companion app for the FastAPI billing engine."
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  collection: ^1.18.0
+  http: ^1.2.1
+  shared_preferences: ^2.2.3
+  google_sign_in: ^7.2.0 # 7.x API (instance/initialize/authenticate) — modern Flutter ke liye
+  url_launcher: ^6.2.6
+  excel: ^4.0.6          # real .xlsx multi-sheet exports (pure Dart)
+  pdf: ^3.12.0           # pinned <3.13: 3.13+ ko xml ^7 chahiye, excel ko xml <7
+  printing: ^5.14.2      # pdf ^3.10 ke saath — native share/print sheet
+  share_plus: ^13.3.0    # share sheet (13.x ko Dart >=3.10 chahiye; 11.x Flutter 3.29+ pe bhi chalta hai)
+  path_provider: ^2.1.5  # temp dir for export files
+  image_picker: ^1.1.2   # club logo upload — gallery se photo (Android/iOS dono)
+  cupertino_icons: ^1.0.8
+  
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon.png
+    - assets/rowdys_den_logo.png
+    - assets/rowdys_den_logo_square.png

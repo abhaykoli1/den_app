@@ -1,0 +1,14 @@
+# Flutter/Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Native dependency and IDE generated files
+ios/Pods/
+ios/.symlinks/
+.idea/
+*.iml
+.DS_Store
+# Widget Preview related
+.widget_preview/
