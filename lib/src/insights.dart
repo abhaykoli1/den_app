@@ -4,7 +4,6 @@ import 'dimensions.dart';
 
 import 'session.dart';
 import 'theme.dart';
-import 'widgets.dart';
 
 /// ✨ Smart Insights — pure rule engine over live club data (no API cost).
 /// Rules mirror the web spec thresholds: severity ordering red > gold > blue > green.
@@ -15,7 +14,7 @@ class Insight {
   const Insight(this.icon, this.tone, this.text);
 }
 
-class InsightsCard extends StatelessWidget {
+class InsightsCard extends StatefulWidget {
   final ClubController club;
   final bool compact;
   final int max;
@@ -26,12 +25,19 @@ class InsightsCard extends StatelessWidget {
     this.max = 3,
   });
 
+  @override
+  State<InsightsCard> createState() => _InsightsCardState();
+}
+
+class _InsightsCardState extends State<InsightsCard> {
+  bool _expanded = false;
+
   List<Insight> _build(AppColors c) {
     final out = <Insight>[];
-    final now = club.currentServerNow;
+    final now = widget.club.currentServerNow;
 
     // 1 — live tables estimate (2-dp), items included
-    final live = club.sessions.where((s) => !s.stopped).toList();
+    final live = widget.club.sessions.where((s) => !s.stopped).toList();
     if (live.isNotEmpty) {
       var est = 0.0;
       for (final s in live) {
@@ -48,7 +54,9 @@ class InsightsCard extends StatelessWidget {
 
     // 2 — out of stock (0) = RED; low (<= reorderLevel) = RED alert w/ names
     final outItems =
-        club.menuItems.where((i) => i.active && i.stockQty <= 0).toList();
+        widget.club.menuItems
+            .where((i) => i.active && i.stockQty <= 0)
+            .toList();
     if (outItems.isNotEmpty) {
       out.add(
         Insight(
@@ -59,7 +67,7 @@ class InsightsCard extends StatelessWidget {
       );
     }
     final low =
-        club.menuItems
+        widget.club.menuItems
             .where(
               (i) => i.active && i.stockQty > 0 && i.stockQty <= i.reorderLevel,
             )
@@ -76,10 +84,10 @@ class InsightsCard extends StatelessWidget {
 
     // 3 — due pressure (RED when totalDue >= 70% of dueLimit)
     final dueMembers =
-        club.members.where((m) => m.active && m.dueAmount > 0).toList();
+        widget.club.members.where((m) => m.active && m.dueAmount > 0).toList();
     final totalDue = dueMembers.fold<double>(0, (a, m) => a + m.dueAmount);
     if (totalDue > 0) {
-      final limit = club.session.activeClub?.dueLimit ?? 0;
+      final limit = widget.club.session.activeClub?.dueLimit ?? 0;
       final worst = dueMembers.reduce(
         (a, b) => a.dueAmount >= b.dueAmount ? a : b,
       );
@@ -96,7 +104,7 @@ class InsightsCard extends StatelessWidget {
     }
 
     // 4 — wallets liability (BLUE)
-    final wallets = club.members.fold<double>(
+    final wallets = widget.club.members.fold<double>(
       0,
       (a, m) => a + (m.walletBalance > 0 ? m.walletBalance : 0),
     );
@@ -112,7 +120,7 @@ class InsightsCard extends StatelessWidget {
 
     // 5 — expiring monthly plans (<= 7 din) = GOLD renewal
     final expiring =
-        club.members.where((m) {
+        widget.club.members.where((m) {
           if (m.planExpiresAt.isEmpty) return false;
           final d = DateTime.tryParse(m.planExpiresAt);
           if (d == null) return false;
@@ -130,7 +138,7 @@ class InsightsCard extends StatelessWidget {
     }
 
     // 6 — running tournament progress (BLUE) / upcoming unpaid (GOLD)
-    for (final t in club.tournaments) {
+    for (final t in widget.club.tournaments) {
       final m = t as Map;
       if (m['status'] == 'running') {
         final matches = (m['matches'] as List?) ?? const [];
@@ -149,7 +157,7 @@ class InsightsCard extends StatelessWidget {
       }
     }
     final upcomingUnpaid =
-        club.tournaments
+        widget.club.tournaments
             .where(
               (t) =>
                   (t as Map)['status'] == 'upcoming' &&
@@ -176,7 +184,7 @@ class InsightsCard extends StatelessWidget {
     }
 
     out.sort((a, b) => _sev(c, a.tone).compareTo(_sev(c, b.tone)));
-    return out.take(max).toList();
+    return out.take(widget.max).toList();
   }
 
   int _sev(AppColors c, Color tone) {
@@ -191,63 +199,122 @@ class InsightsCard extends StatelessWidget {
     final c = context.colors;
     final rules = _build(c);
     if (rules.isEmpty) return const SizedBox.shrink();
-    return SectionCard(
-      title: 'Smart Insights',
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: c.green.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: c.green.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _PulseDot(color: c.green),
-            const SizedBox(width: 4),
-            Text(
-              'LIVE',
-              style: TextStyle(
-                color: c.green,
-                fontSize: Dimens.font9,
-                fontWeight: FontWeight.w800,
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Text(
+                            'Smart Insights',
+                            style: TextStyle(
+                              color: c.text,
+                              fontSize: Dimens.font13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          AnimatedRotation(
+                            turns: _expanded ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 220),
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 18,
+                              color: c.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.green.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: c.green.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _PulseDot(color: c.green),
+                          const SizedBox(width: 4),
+                          Text(
+                            'LIVE',
+                            style: TextStyle(
+                              color: c.green,
+                              fontSize: Dimens.font9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              child:
+                  _expanded
+                      ? Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Column(
+                          children: [
+                            for (final r in rules)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: widget.compact ? 5 : 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: c.bgMuted,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border(
+                                    left: BorderSide(color: r.tone, width: 3),
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(r.icon, size: 13, color: r.tone),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        r.text,
+                                        style: TextStyle(
+                                          color: c.textSecondary,
+                                          fontSize: widget.compact ? 12 : 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                      : const SizedBox.shrink(),
             ),
           ],
         ),
-      ),
-      child: Column(
-        children: [
-          for (final r in rules)
-            Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: compact ? 5 : 7,
-              ),
-              decoration: BoxDecoration(
-                color: c.bgMuted,
-                borderRadius: BorderRadius.circular(6),
-                border: Border(left: BorderSide(color: r.tone, width: 3)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(r.icon, size: 13, color: r.tone),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      r.text,
-                      style: TextStyle(
-                        color: c.textSecondary,
-                        fontSize: compact ? 12 : 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
       ),
     );
   }

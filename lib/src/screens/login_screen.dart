@@ -29,11 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final s = widget.session;
     final c = context.colors;
-    const cardBg = Color(0xFF101113);
-    const cardSurface = Color(0xFF1B1D20);
-    const cardBorder = Color(0xFF34363A);
-    const cardText = Color(0xFFF2EFE8);
-    const cardMuted = Color(0xFFB9B5AE);
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -50,9 +45,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 380),
                 child: Card(
-                  color: cardBg,
-                  surfaceTintColor: cardBg,
-                  elevation: 8,
+                  color: c.bgElevated,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 3,
                   shadowColor: Colors.black.withValues(alpha: 0.24),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -103,9 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: cardSurface,
+                            color: c.bgMuted,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: cardBorder),
+                            border: Border.all(color: c.borderStrong),
                           ),
                           child: Row(
                             children: [
@@ -115,11 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: c.green,
                               ),
                               const SizedBox(width: 8),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'Secure access for your club operations',
                                   style: TextStyle(
-                                    color: cardText,
+                                    color: c.text,
                                     fontSize: Dimens.font11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -171,23 +166,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: Container(height: 1, color: cardBorder),
+                                child: Container(height: 1, color: c.border),
                               ),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
                                 child: Text(
                                   'DEV LOGIN',
                                   style: TextStyle(
-                                    color: cardMuted,
+                                    color: c.textMuted,
                                     fontSize: Dimens.font9,
                                     letterSpacing: 1,
                                   ),
                                 ),
                               ),
                               Expanded(
-                                child: Container(height: 1, color: cardBorder),
+                                child: Container(height: 1, color: c.border),
                               ),
                             ],
                           ),
@@ -224,11 +217,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Billing, due desk, tournaments & finance — managed from the Master Admin panel.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: cardMuted,
+                            color: c.textMuted,
                             fontSize: Dimens.font10,
                           ),
                         ),

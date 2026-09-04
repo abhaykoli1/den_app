@@ -1155,6 +1155,8 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar:
           hasClub
               ? NavigationBar(
+                elevation: 0,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 selectedIndex: index,
                 onDestinationSelected: _selectTab,
                 destinations: [

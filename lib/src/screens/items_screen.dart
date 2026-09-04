@@ -5,16 +5,41 @@ import '../dimensions.dart';
 
 import '../api.dart';
 import '../insights.dart';
+import 'item_bills_screen.dart';
 import '../models.dart';
 import '../offline_queue.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
+class CounterSelection extends ChangeNotifier {
+  final Map<String, int> quantities = {};
+
+  void setQuantity(String itemId, int quantity) {
+    if (quantity <= 0) {
+      quantities.remove(itemId);
+    } else {
+      quantities[itemId] = quantity;
+    }
+    notifyListeners();
+  }
+
+  void clear() {
+    quantities.clear();
+    notifyListeners();
+  }
+}
+
 class ItemsScreen extends StatefulWidget {
   final SessionController session;
   final ClubController club;
-  const ItemsScreen({super.key, required this.session, required this.club});
+  final CounterSelection selection;
+  const ItemsScreen({
+    super.key,
+    required this.session,
+    required this.club,
+    required this.selection,
+  });
 
   @override
   State<ItemsScreen> createState() => _ItemsScreenState();
@@ -22,13 +47,12 @@ class ItemsScreen extends StatefulWidget {
 
 class _ItemsScreenState extends State<ItemsScreen> {
   final OfflineQueue _queue = OfflineQueue();
-  final Map<String, int> _qty = {};
   Member? _member;
   final _customer = TextEditingController();
   final _discount = TextEditingController();
   String _mode = 'cash';
-  bool _showHistory = false;
   int _guestNumber = 1;
+  String? _selectedCategory;
 
   String _defaultGuestName() {
     final guestName = 'Guest $_guestNumber';
@@ -40,6 +64,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   void initState() {
     super.initState();
     widget.club.addListener(_onData);
+    widget.selection.addListener(_onData);
   }
 
   void _onData() => mounted ? setState(() {}) : null;
@@ -47,6 +72,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   @override
   void dispose() {
     widget.club.removeListener(_onData);
+    widget.selection.removeListener(_onData);
     _customer.dispose();
     _discount.dispose();
     _queue.dispose();
@@ -55,7 +81,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   double get _subtotal {
     var sum = 0.0;
-    for (final entry in _qty.entries) {
+    for (final entry in widget.selection.quantities.entries) {
       final item =
           widget.club.menuItems.where((i) => i.id == entry.key).firstOrNull;
       if (item != null) sum += item.price * entry.value;
@@ -65,7 +91,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   double get _estProfit {
     var sum = 0.0;
-    for (final entry in _qty.entries) {
+    for (final entry in widget.selection.quantities.entries) {
       final item =
           widget.club.menuItems.where((i) => i.id == entry.key).firstOrNull;
       if (item != null) sum += (item.price - item.costPrice) * entry.value;
@@ -152,7 +178,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<void> _save() async {
-    final picked = _qty.entries.where((e) => e.value > 0).toList();
+    final picked =
+        widget.selection.quantities.entries.where((e) => e.value > 0).toList();
     if (picked.isEmpty) {
       toast(context, 'Tap items to add them', error: true);
       return;
@@ -189,7 +216,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
       if (mounted) {
         toast(context, res['message'] ?? 'Bill saved');
         setState(() {
-          _qty.clear();
+          widget.selection.clear();
           _discount.clear();
           _customer.clear();
           _member = null;
@@ -225,58 +252,13 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final items = widget.club.menuItems.where((i) => i.active).toList();
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                _showHistory ? 'Item bills (history)' : 'Counter sale',
-                style: TextStyle(
-                  color: c.text,
-                  fontSize: Dimens.font14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            if (_queue.length > 0)
-              TextButton.icon(
-                onPressed: _sync,
-                icon: Icon(Icons.sync, size: 14, color: c.gold),
-                label: Text(
-                  'Sync ${_queue.length}',
-                  style: TextStyle(color: c.gold, fontSize: Dimens.font11),
-                ),
-              ),
-            IconButton(
-              tooltip: _showHistory ? 'New bill' : 'Bill history',
-              onPressed: () => setState(() => _showHistory = !_showHistory),
-              icon: Icon(
-                _showHistory ? Icons.add_shopping_cart : Icons.history,
-                size: 20,
-                color: c.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                backgroundColor: c.green,
-                foregroundColor: c.onGreen,
-              ),
-              onPressed: _addItemSheet,
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add Item'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
         InsightsCard(club: widget.club),
         const SizedBox(height: 8),
-        if (_showHistory) _history(context) else _counter(context, items),
+        _counter(context, items),
       ],
     );
   }
@@ -382,11 +364,63 @@ class _ItemsScreenState extends State<ItemsScreen> {
   // ================================================================ add item sheet
   Future<void> _addItemSheet() async {
     final name = TextEditingController();
-    final category = TextEditingController(text: 'Cafe');
     final price = TextEditingController();
     final cost = TextEditingController();
     final stock = TextEditingController();
     final reorder = TextEditingController(text: '5');
+    final categories =
+        <String>{
+            'Cafe',
+            ...widget.club.menuItems
+                .map((item) => item.category.trim())
+                .where((item) => item.isNotEmpty),
+          }.toList()
+          ..sort();
+    var selectedCategory =
+        categories.contains('Cafe') ? 'Cafe' : categories.first;
+
+    Future<void> addCategory(
+      BuildContext dialogContext,
+      void Function(void Function()) set,
+    ) async {
+      final controller = TextEditingController();
+      final value = await showDialog<String>(
+        context: dialogContext,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Add category'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Category name',
+                  hintText: 'Meals, Drinks, Snacks',
+                ),
+                onSubmitted: (value) => Navigator.pop(context, value),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, controller.text),
+                  child: const Text('Add category'),
+                ),
+              ],
+            ),
+      );
+      final normalized = value?.trim() ?? '';
+      if (normalized.isNotEmpty && !categories.contains(normalized)) {
+        set(() {
+          categories.add(normalized);
+          categories.sort();
+          selectedCategory = normalized;
+        });
+      }
+    }
+
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -425,39 +459,77 @@ class _ItemsScreenState extends State<ItemsScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: category,
-                                textCapitalization: TextCapitalization.words,
-                                style: AppText.field.copyWith(color: c.text),
-                                decoration: const InputDecoration(
-                                  labelText: 'Category',
-                                  hintText: 'Cafe',
-                                ),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final categoryField =
+                                DropdownButtonFormField<String>(
+                                  initialValue: selectedCategory,
+                                  style: AppText.dropdown.copyWith(
+                                    color: c.text,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Category',
+                                    contentPadding: Dimens.fieldPad,
+                                  ),
+                                  items:
+                                      categories
+                                          .map(
+                                            (value) => DropdownMenuItem(
+                                              value: value,
+                                              child: Text(value),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged:
+                                      (value) => set(
+                                        () =>
+                                            selectedCategory =
+                                                value ?? selectedCategory,
+                                      ),
+                                );
+                            final addCategoryButton = OutlinedButton.icon(
+                              onPressed: () => addCategory(ctx, set),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Add category'),
+                            );
+                            final priceField = TextField(
+                              controller: price,
+                              keyboardType: TextInputType.numberWithOptions(
+                                decimal: true,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: price,
-                                keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                style: AppText.field.copyWith(color: c.text),
-                                decoration: const InputDecoration(
-                                  labelText: 'Sell price ₹ *',
-                                ),
+                              style: AppText.field.copyWith(color: c.text),
+                              decoration: const InputDecoration(
+                                labelText: 'Sell price ₹ *',
                               ),
-                            ),
-                          ],
+                            );
+                            if (constraints.maxWidth < 560) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  categoryField,
+                                  const SizedBox(height: 6),
+                                  addCategoryButton,
+                                  const SizedBox(height: 6),
+                                  priceField,
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(child: categoryField),
+                                const SizedBox(width: 8),
+                                SizedBox(width: 130, child: addCategoryButton),
+                                const SizedBox(width: 8),
+                                Expanded(child: priceField),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final fields = [
+                              TextField(
                                 controller: cost,
                                 keyboardType: TextInputType.numberWithOptions(
                                   decimal: true,
@@ -467,10 +539,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                                   labelText: 'Cost ₹ (profit calc)',
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
+                              TextField(
                                 controller: stock,
                                 keyboardType: TextInputType.numberWithOptions(
                                   decimal: true,
@@ -480,10 +549,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                                   labelText: 'Stock qty',
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
+                              TextField(
                                 controller: reorder,
                                 keyboardType: TextInputType.numberWithOptions(
                                   decimal: true,
@@ -493,8 +559,30 @@ class _ItemsScreenState extends State<ItemsScreen> {
                                   labelText: 'Low alert at',
                                 ),
                               ),
-                            ),
-                          ],
+                            ];
+                            if (constraints.maxWidth < 560) {
+                              return Column(
+                                children: [
+                                  for (final field in fields) ...[
+                                    field,
+                                    const SizedBox(height: 6),
+                                  ],
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < fields.length;
+                                  index++
+                                ) ...[
+                                  if (index > 0) const SizedBox(width: 8),
+                                  Expanded(child: fields[index]),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         actionPair(
@@ -532,8 +620,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
     try {
       await widget.session.api.post('/clubs/$clubId/menu-items', {
         'name': name.text.trim(),
-        'category':
-            category.text.trim().isEmpty ? 'Cafe' : category.text.trim(),
+        'category': selectedCategory,
         'price': double.tryParse(price.text.trim()) ?? 0,
         'costPrice': double.tryParse(cost.text.trim()) ?? 0,
         'stockQty': int.tryParse(stock.text.trim()) ?? 0,
@@ -548,99 +635,102 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   Widget _counter(BuildContext context, List<MenuItem> items) {
     final c = context.colors;
-    final selected = items.where((i) => (_qty[i.id] ?? 0) > 0).toList();
+    final selected =
+        items
+            .where((item) => widget.selection.quantities[item.id] != null)
+            .toList();
+    final seenItemIds = <String>{};
+    final categoryItems = <String, List<MenuItem>>{};
+    for (final item in items) {
+      if (!seenItemIds.add(item.id)) continue;
+      categoryItems.putIfAbsent(item.category, () => []).add(item);
+    }
+    final categories = categoryItems.keys.toList()..sort();
+    final category =
+        categories.contains(_selectedCategory)
+            ? _selectedCategory!
+            : (categories.isEmpty ? null : categories.first);
+    final visibleItems =
+        category == null ? const <MenuItem>[] : categoryItems[category]!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Tap is intentionally a toggle: tap once to add, tap again to remove.
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final i in items)
-              InkWell(
-                onTap:
-                    i.outOfStock
-                        ? null
-                        : () => setState(() {
-                          _qty[i.id] = (_qty[i.id] ?? 0) > 0 ? 0 : 1;
-                        }),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: category,
+                  style: AppText.dropdown.copyWith(color: c.text),
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    contentPadding: Dimens.fieldPad,
                   ),
-                  decoration: BoxDecoration(
-                    color:
-                        i.outOfStock
-                            ? c.bgMuted.withValues(alpha: 0.45)
-                            : c.bgMuted,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color:
-                          (_qty[i.id] ?? 0) > 0
-                              ? c.green
-                              : (i.lowStock ? c.gold : c.border),
+                  items:
+                      categories
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(
+                                value,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedCategory = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (category != null) ...[
+                  Text(
+                    'Category: $category',
+                    style: TextStyle(
+                      color: c.text,
+                      fontSize: Dimens.font13,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 132),
-                        child: Text(
-                          i.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: c.text,
-                            fontSize: Dimens.font12,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  const SizedBox(height: 8),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 0.95,
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        fmtMoney(i.price),
-                        style: TextStyle(
-                          color: c.textMuted,
-                          fontSize: Dimens.font10_5,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              (_qty[i.id] ?? 0) > 0
-                                  ? c.soft(c.green)
-                                  : c.bgElevated,
-                          borderRadius: BorderRadius.circular(99),
-                          border: Border.all(
-                            color:
-                                (_qty[i.id] ?? 0) > 0
-                                    ? c.green
-                                    : c.borderStrong,
-                          ),
-                        ),
-                        child: Text(
-                          '×${_qty[i.id] ?? 0}',
-                          style: TextStyle(
-                            color:
-                                (_qty[i.id] ?? 0) > 0 ? c.green : c.textMuted,
-                            fontSize: Dimens.font10_5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
+                    itemCount: visibleItems.length,
+                    itemBuilder: (context, index) {
+                      final item = visibleItems[index];
+                      final quantity =
+                          widget.selection.quantities[item.id] ?? 0;
+                      return _CounterItemCard(
+                        item: item,
+                        quantity: quantity,
+                        onTap:
+                            item.outOfStock
+                                ? null
+                                : () => setState(() {
+                                  widget.selection.setQuantity(
+                                    item.id,
+                                    quantity == 0 ? 1 : quantity,
+                                  );
+                                }),
+                      );
+                    },
                   ),
-                ),
-              ),
-          ],
+                ],
+              ],
+            );
+          },
         ),
         if (selected.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -653,15 +743,17 @@ class _ItemsScreenState extends State<ItemsScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          for (final item in selected)
+          for (var index = 0; index < selected.length; index++)
             _SelectedItemRow(
-              item: item,
-              qty: _qty[item.id] ?? 0,
+              item: selected[index],
+              qty: widget.selection.quantities[selected[index].id] ?? 0,
+              isFirst: index == 0,
+              isLast: index == selected.length - 1,
               onQtyChanged:
-                  (qty) => setState(() {
-                    // Quantity 0 means this item is no longer selected.
-                    _qty[item.id] = qty.clamp(0, item.stockQty);
-                  }),
+                  (qty) => widget.selection.setQuantity(
+                    selected[index].id,
+                    qty.clamp(0, selected[index].stockQty),
+                  ),
             ),
         ],
         const SizedBox(height: 12),
@@ -677,7 +769,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
               _member?.name ?? 'Walk-in customer',
               style: TextStyle(
                 color: _member == null ? c.textMuted : c.text,
-                fontSize: Dimens.font12,
+                fontSize: Dimens.dropdownFont,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -776,13 +869,77 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 }
 
+class _CounterItemCard extends StatelessWidget {
+  final MenuItem item;
+  final int quantity;
+  final VoidCallback? onTap;
+
+  const _CounterItemCard({
+    required this.item,
+    required this.quantity,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final unavailable = item.outOfStock;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: quantity > 0 ? c.green.withValues(alpha: 0.12) : null,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: unavailable ? c.textMuted : c.text,
+                        fontSize: Dimens.font12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                unavailable ? 'Out of stock' : fmtMoney(item.price),
+                style: TextStyle(
+                  color: unavailable ? c.red : c.green,
+                  fontSize: Dimens.font11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SelectedItemRow extends StatelessWidget {
   final MenuItem item;
   final int qty;
+  final bool isFirst;
+  final bool isLast;
   final ValueChanged<int> onQtyChanged;
+
   const _SelectedItemRow({
     required this.item,
     required this.qty,
+    this.isFirst = true,
+    this.isLast = true,
     required this.onQtyChanged,
   });
 
@@ -790,7 +947,15 @@ class _SelectedItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Card(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(isFirst ? 12 : 0),
+          topRight: Radius.circular(isFirst ? 12 : 0),
+          bottomLeft: Radius.circular(isLast ? 12 : 0),
+          bottomRight: Radius.circular(isLast ? 12 : 0),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         child: Row(
@@ -846,7 +1011,13 @@ class _SelectedItemRow extends StatelessWidget {
 class StockScreen extends StatefulWidget {
   final SessionController session;
   final ClubController club;
-  const StockScreen({super.key, required this.session, required this.club});
+  final CounterSelection selection;
+  const StockScreen({
+    super.key,
+    required this.session,
+    required this.club,
+    required this.selection,
+  });
 
   @override
   State<StockScreen> createState() => _StockScreenState();
@@ -857,6 +1028,7 @@ class _StockScreenState extends State<StockScreen> {
   void initState() {
     super.initState();
     widget.club.addListener(_onData);
+    widget.selection.addListener(_onData);
   }
 
   void _onData() {
@@ -866,7 +1038,98 @@ class _StockScreenState extends State<StockScreen> {
   @override
   void dispose() {
     widget.club.removeListener(_onData);
+    widget.selection.removeListener(_onData);
     super.dispose();
+  }
+
+  void _openBills() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => ItemBillsScreen(session: widget.session, club: widget.club),
+      ),
+    );
+  }
+
+  Future<void> _addItem() async {
+    final name = TextEditingController();
+    final category = TextEditingController(text: 'Cafe');
+    final price = TextEditingController();
+    final stock = TextEditingController(text: '0');
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder:
+          (ctx) => Padding(
+            padding: EdgeInsets.only(
+              left: 14,
+              right: 14,
+              top: 14,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 14,
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: name,
+                    decoration: const InputDecoration(labelText: 'Item name'),
+                  ),
+                  TextField(
+                    controller: category,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                  ),
+                  TextField(
+                    controller: price,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Sell price ₹',
+                    ),
+                  ),
+                  TextField(
+                    controller: stock,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Stock qty'),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        if (name.text.trim().isEmpty ||
+                            (double.tryParse(price.text) ?? 0) <= 0) {
+                          return;
+                        }
+                        Navigator.pop(ctx, true);
+                      },
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('Add item'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+    if (saved != true || !mounted) return;
+    try {
+      await widget.session.api.post('/clubs/${widget.club.clubId}/menu-items', {
+        'name': name.text.trim(),
+        'category':
+            category.text.trim().isEmpty ? 'Cafe' : category.text.trim(),
+        'price': double.tryParse(price.text) ?? 0,
+        'costPrice': 0,
+        'stockQty': int.tryParse(stock.text) ?? 0,
+        'reorderLevel': 5,
+      });
+      await widget.club.refresh();
+      if (mounted) toast(context, 'Item added');
+    } on ApiException catch (e) {
+      if (mounted) toast(context, e.message, error: true);
+    }
   }
 
   Future<void> _edit(MenuItem item) async {
@@ -1032,6 +1295,31 @@ class _StockScreenState extends State<StockScreen> {
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Stock',
+                  style: TextStyle(
+                    color: c.text,
+                    fontSize: Dimens.font14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Bills history',
+                onPressed: _openBills,
+                icon: Icon(Icons.history, color: c.textSecondary),
+              ),
+              FilledButton.icon(
+                onPressed: _addItem,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Item'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
             'All items · tap to edit',
             style: TextStyle(color: c.textMuted, fontSize: Dimens.font11),

@@ -201,10 +201,11 @@ class _PlayersScreenState extends State<PlayersScreen> {
                 ],
               ),
               const SizedBox(height: 7),
-              Row(
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
                   _mini(c, 'WALLET', fmtMoney(m.walletBalance), c.gold),
-                  const SizedBox(width: 6),
                   _mini(
                     c,
                     'DUE',
@@ -212,22 +213,18 @@ class _PlayersScreenState extends State<PlayersScreen> {
                     m.hasDue ? c.red : c.textMuted,
                   ),
                   if (m.passFramesLeft > 0) ...[
-                    const SizedBox(width: 6),
                     _mini(c, 'FRAMES', '${m.passFramesLeft}', c.blue),
                   ],
                   if (m.planName != null) ...[
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: _mini(
-                        c,
-                        (m.planType ?? 'plan').toUpperCase(),
-                        m.planName!,
-                        m.planType == 'wallet'
-                            ? c.gold
-                            : m.planType == 'pass'
-                            ? c.blue
-                            : c.green,
-                      ),
+                    _mini(
+                      c,
+                      (m.planType ?? 'plan').toUpperCase(),
+                      m.planName!,
+                      m.planType == 'wallet'
+                          ? c.gold
+                          : m.planType == 'pass'
+                          ? c.blue
+                          : c.green,
                     ),
                   ],
                 ],
@@ -302,13 +299,17 @@ class _PlayersScreenState extends State<PlayersScreen> {
                 letterSpacing: 0.5,
               ),
             ),
-            Text(
-              value,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tone,
-                fontSize: Dimens.font11,
-                fontWeight: FontWeight.w800,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 150),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: tone,
+                  fontSize: Dimens.font11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -368,11 +369,13 @@ class _PlayersScreenState extends State<PlayersScreen> {
                     throw const ApiException(-1, 'Club not ready');
                   }
 
+                  final normalizedEmail = email.text.trim().toLowerCase();
+
                   if (existing == null) {
                     await widget.session.api.post('/clubs/$clubId/members', {
                       'name': name.text.trim(),
                       'phone': phone.text.trim(),
-                      'email': email.text.trim(),
+                      'email': normalizedEmail,
                       'notes': notes.text.trim(),
                       'walletBalance': double.tryParse(wallet.text.trim()) ?? 0,
                       'dueAmount': double.tryParse(due.text.trim()) ?? 0,
@@ -387,7 +390,7 @@ class _PlayersScreenState extends State<PlayersScreen> {
                       {
                         'name': name.text.trim(),
                         'phone': phone.text.trim(),
-                        'email': email.text.trim(),
+                        'email': normalizedEmail,
                         'notes': notes.text.trim(),
                         if (setWallet.text.trim().isNotEmpty)
                           'walletBalance':

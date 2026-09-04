@@ -65,7 +65,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.onGold,
   });
 
-  // == Owner palette v4 — warm gold/charcoal "Rowdy's Den" look =============
+  // == Brand palette — charcoal, fresh green and tangerine ==================
   static const dark = AppColors(
     bg: Color(0xFF0C0C0D),
     bgElevated: Color(0xFF141416),
@@ -79,28 +79,28 @@ class AppColors extends ThemeExtension<AppColors> {
     textMuted: Color(0xFF8B8680),
     green: Color(0xFF3DBA6E),
     red: Color(0xFFE05A4F),
-    gold: Color(0xFFD4A017),
-    blue: Color(0xFF5B8DEF),
+    gold: Color(0xFFFF7043),
+    blue: Color(0xFF81C784),
     onGreen: Color(0xFF0D1208),
     onGold: Color(0xFF0C0C0D),
   );
 
-  // == Owner palette v4 — light companion (same brand, warm-cream base) =====
+  // == Light commerce palette — bright surfaces with warm accents ============
   static const light = AppColors(
-    bg: Color(0xFFF7F5F0),
+    bg: Color(0xFFF3FAF7),
     bgElevated: Color(0xFFFFFFFF),
-    bgMuted: Color(0xFFEFEBE2),
-    bgHover: Color(0xFFE8E2D5),
+    bgMuted: Color(0xFFE8F5EE),
+    bgHover: Color(0xFFD8EFDF),
     bgInput: Color(0xFFFFFFFF),
-    border: Color(0xFFE0DAC8),
-    borderStrong: Color(0xFFC9C0A8),
-    text: Color(0xFF1A1815),
-    textSecondary: Color(0xFF5C574C),
-    textMuted: Color(0xFF7A756B),
-    green: Color(0xFF2F9E5B),
-    red: Color(0xFFC94A3F),
-    gold: Color(0xFFB8860B),
-    blue: Color(0xFF3B6FD9),
+    border: Color(0xFFD8E8DF),
+    borderStrong: Color(0xFFB7D1C0),
+    text: Color(0xFF18231D),
+    textSecondary: Color(0xFF53645A),
+    textMuted: Color(0xFF809087),
+    green: Color(0xFF20A85A),
+    red: Color(0xFFE53935),
+    gold: Color(0xFFFF7043),
+    blue: Color(0xFF2E9E5B),
     onGreen: Color(0xFFFFFFFF),
     onGold: Color(0xFFFFFFFF),
   );
@@ -126,9 +126,9 @@ class AppTheme {
       brightness: brightness,
       primary: c.green,
       // web .btn-green: dark theme me near-black text, light me white
-      onPrimary: c.onGreen,
-      secondary: c.gold,
-      onSecondary: const Color(0xFF1A1305),
+      onPrimary: Colors.white,
+      secondary: c.red,
+      onSecondary: Colors.white,
       surface: c.bgElevated,
       onSurface: c.text,
       error: c.red,
@@ -146,7 +146,7 @@ class AppTheme {
       canvasColor: c.bgElevated,
       extensions: [c],
       dividerColor: c.border,
-      fontFamily: 'Inter',
+      fontFamily: 'Avenir Next',
       // ★ v3.24 — DropdownButton/FormField ka text default yahi se aata hai
       // (titleLarge) — pehle 16px ka bada text + badi height aati thi. Ab
       // dropdown aur input dono ek hi compact size pe.
@@ -162,9 +162,11 @@ class AppTheme {
             bodyMedium: AppText.dropdown.copyWith(color: c.text),
           ),
       appBarTheme: AppBarTheme(
-        backgroundColor: c.bgElevated,
+        backgroundColor: c.bg,
         foregroundColor: c.text,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         // ★ v3.26 — back-button aur title ke beech ka gap kam (owner's note;
         // default 16 bahut khulla lagta tha).
@@ -174,12 +176,13 @@ class AppTheme {
           fontSize: Dimens.font17,
           fontWeight: FontWeight.w600,
         ),
+        shape: Border(bottom: BorderSide(color: c.border)),
       ),
       cardTheme: CardThemeData(
         color: c.bgElevated,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: c.border),
         ),
         margin: EdgeInsets.zero,
@@ -199,9 +202,7 @@ class AppTheme {
           elevation: const WidgetStatePropertyAll(0),
           shadowColor: const WidgetStatePropertyAll(Colors.transparent),
           shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Dimens.radius),
-            ),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           side: WidgetStatePropertyAll(BorderSide(color: c.borderStrong)),
           padding: const WidgetStatePropertyAll(Dimens.btnPad),
@@ -218,9 +219,7 @@ class AppTheme {
         style: ButtonStyle(
           foregroundColor: WidgetStatePropertyAll(c.text),
           shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Dimens.radius),
-            ),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           side: WidgetStatePropertyAll(BorderSide(color: c.borderStrong)),
           padding: const WidgetStatePropertyAll(Dimens.outlineBtnPad),
@@ -257,11 +256,9 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           backgroundColor: WidgetStatePropertyAll(c.green),
-          foregroundColor: WidgetStatePropertyAll(c.onGreen),
+          foregroundColor: const WidgetStatePropertyAll(Colors.white),
           shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Dimens.radius),
-            ),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           padding: const WidgetStatePropertyAll(Dimens.btnPad),
           textStyle: const WidgetStatePropertyAll(AppText.button),
@@ -271,31 +268,28 @@ class AppTheme {
         ),
       ),
 
-      // ★ Yellow/black option buttons (Solo/2v2 · Team A/B · Cash/UPI/Card) —
-      // height CTA jitni (Dimens.segH), selected = GOLD fill + dark text
-      // (owner's screenshots wala look), unselected = transparent + border.
+      // Green selected options keep payment and mode controls easy to scan.
       segmentedButtonTheme: SegmentedButtonThemeData(
         selectedIcon: const SizedBox.shrink(), // ★ v3.24 — tick icon hata diya
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith(
             (s) =>
-                s.contains(WidgetState.selected) ? c.gold : Colors.transparent,
+                s.contains(WidgetState.selected) ? c.green : Colors.transparent,
           ),
           foregroundColor: WidgetStateProperty.resolveWith(
             (s) =>
                 s.contains(WidgetState.selected)
-                    ? const Color(0xFF1A1305)
+                    ? Colors.white
                     : c.textSecondary,
           ),
           side: WidgetStateProperty.resolveWith(
             (s) => BorderSide(
-              color: s.contains(WidgetState.selected) ? c.gold : c.borderStrong,
+              color:
+                  s.contains(WidgetState.selected) ? c.green : c.borderStrong,
             ),
           ),
           shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Dimens.radius),
-            ),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
 
           padding: const WidgetStatePropertyAll(Dimens.segmentedBtnPad),
@@ -344,23 +338,23 @@ class AppTheme {
         fillColor: c.bgInput,
         contentPadding: Dimens.fieldPad,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: c.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: c.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: c.green, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: c.red),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: c.red, width: 1.4),
         ),
         hintStyle: AppText.hint(c),
@@ -399,9 +393,10 @@ class AppTheme {
       // ================================================================ //
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: c.bgElevated,
-        height: 56,
-        indicatorColor: c.green.withValues(alpha: 0.16),
+        height: 72,
+        indicatorColor: c.green.withValues(alpha: 0.18),
         surfaceTintColor: Colors.transparent,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith(
           (s) => IconThemeData(
             size: 19,

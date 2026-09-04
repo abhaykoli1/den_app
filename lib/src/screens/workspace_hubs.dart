@@ -55,7 +55,7 @@ class ClubWorkspace extends StatelessWidget {
   );
 }
 
-class RecordsWorkspace extends StatelessWidget {
+class RecordsWorkspace extends StatefulWidget {
   final SessionController session;
   final ClubController club;
   final int initialTab;
@@ -67,8 +67,21 @@ class RecordsWorkspace extends StatelessWidget {
   });
 
   @override
+  State<RecordsWorkspace> createState() => _RecordsWorkspaceState();
+}
+
+class _RecordsWorkspaceState extends State<RecordsWorkspace> {
+  final CounterSelection _selection = CounterSelection();
+
+  @override
+  void dispose() {
+    _selection.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => DefaultTabController(
-    initialIndex: initialTab,
+    initialIndex: widget.initialTab,
     length: 4,
     child: Column(
       children: [
@@ -83,10 +96,18 @@ class RecordsWorkspace extends StatelessWidget {
         Expanded(
           child: TabBarView(
             children: [
-              ItemsScreen(session: session, club: club),
-              StockScreen(session: session, club: club),
-              TournamentsScreen(session: session, club: club),
-              LogsScreen(session: session, club: club),
+              ItemsScreen(
+                session: widget.session,
+                club: widget.club,
+                selection: _selection,
+              ),
+              StockScreen(
+                session: widget.session,
+                club: widget.club,
+                selection: _selection,
+              ),
+              TournamentsScreen(session: widget.session, club: widget.club),
+              LogsScreen(session: widget.session, club: widget.club),
             ],
           ),
         ),
@@ -144,6 +165,74 @@ class HomeOverview extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: c.green,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: c.green.withValues(alpha: 0.22),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Today's pulse",
+                        style: TextStyle(
+                          color: c.onGreen.withValues(alpha: 0.76),
+                          fontSize: Dimens.font11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        running == 0
+                            ? 'Ready for the next game'
+                            : '$running tables are live',
+                        style: TextStyle(
+                          color: c.onGreen,
+                          fontSize: Dimens.font17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        dues == 0
+                            ? 'Everything looks clear.'
+                            : '$dues dues need attention today.',
+                        style: TextStyle(
+                          color: c.onGreen.withValues(alpha: 0.72),
+                          fontSize: Dimens.font11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: c.onGreen.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: Icon(
+                    running == 0 ? Icons.bolt_outlined : Icons.graphic_eq,
+                    color: c.onGreen,
+                    size: 27,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -152,6 +241,7 @@ class HomeOverview extends StatelessWidget {
                   value: '$running',
                   sub: 'sessions running',
                   tone: c.green,
+                  icon: Icons.table_restaurant_outlined,
                 ),
               ),
               const SizedBox(width: 8),
@@ -161,6 +251,7 @@ class HomeOverview extends StatelessWidget {
                   value: '$dues',
                   sub: fmtMoney(club.stats.totalDue),
                   tone: c.red,
+                  icon: Icons.account_balance_wallet_outlined,
                 ),
               ),
             ],

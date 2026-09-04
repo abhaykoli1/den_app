@@ -72,100 +72,69 @@ class ClubLogo extends StatelessWidget {
 
 void toast(BuildContext context, String msg, {bool error = false}) {
   final c = context.colors;
-  // A SnackBar sits at the bottom Scaffold, which is obscured by an open
-  // dialog/bottom sheet. Put validation feedback above that modal instead.
-  if (ModalRoute.of(context) is PopupRoute) {
-    _topToast?.remove();
-    final overlay = Overlay.of(context, rootOverlay: true);
-    final entry =
-        _topToast = OverlayEntry(
-          builder:
-              (ctx) => Positioned(
-                top: MediaQuery.paddingOf(ctx).top + 10,
-                left: 16,
-                right: 16,
-                child: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: c.bgElevated,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: error ? c.red : c.border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          error
-                              ? Icons.error_outline
-                              : Icons.check_circle_outline,
-                          size: 18,
-                          color: error ? c.red : c.green,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            msg,
-                            style: TextStyle(
-                              color: c.text,
-                              fontSize: Dimens.font13,
-                            ),
+  // Keep every action message in the same top position, including messages
+  // triggered from dialogs and bottom sheets.
+  _topToast?.remove();
+  final overlay = Overlay.of(context, rootOverlay: true);
+  final entry =
+      _topToast = OverlayEntry(
+        builder:
+            (ctx) => Positioned(
+              top: MediaQuery.paddingOf(ctx).top + 10,
+              left: 16,
+              right: 16,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.bgElevated,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: error ? c.red : c.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        error
+                            ? Icons.error_outline
+                            : Icons.check_circle_outline,
+                        size: 18,
+                        color: error ? c.red : c.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          msg,
+                          style: TextStyle(
+                            color: c.text,
+                            fontSize: Dimens.dropdownFont,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-        );
-    overlay.insert(entry);
-    Future<void>.delayed(const Duration(seconds: 3), () {
-      if (_topToast == entry) {
-        entry.remove();
-        _topToast = null;
-      }
-    });
-    return;
-  }
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: c.bgElevated,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: error ? c.red : c.border),
-        ),
-        content: Row(
-          children: [
-            Icon(
-              error ? Icons.error_outline : Icons.check_circle_outline,
-              size: 16,
-              color: error ? c.red : c.green,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                msg,
-                style: TextStyle(color: c.text, fontSize: Dimens.font13),
-              ),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+      );
+  overlay.insert(entry);
+  Future<void>.delayed(const Duration(seconds: 3), () {
+    if (_topToast == entry) {
+      entry.remove();
+      _topToast = null;
+    }
+  });
 }
 
 class StatTile extends StatelessWidget {
@@ -188,23 +157,31 @@ class StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 9),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: c.bgElevated,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.border.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: c.text.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 3,
-            height: 30,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: tone,
-              borderRadius: BorderRadius.circular(2),
+              color: tone.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(11),
             ),
+            child: Icon(icon ?? Icons.insights_outlined, color: tone, size: 17),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,8 +192,8 @@ class StatTile extends StatelessWidget {
                   style: TextStyle(
                     color: c.textMuted,
                     fontSize: Dimens.statCardTitleFont,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -224,9 +201,9 @@ class StatTile extends StatelessWidget {
                   value,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: tone,
-                    fontSize: Dimens.statCardMoneyFont,
-                    fontWeight: FontWeight.w600,
+                    color: c.text,
+                    fontSize: Dimens.font18,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 if (sub != null)
@@ -425,8 +402,9 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -437,8 +415,8 @@ class SectionCard extends StatelessWidget {
                     title,
                     style: TextStyle(
                       color: c.text,
-                      fontSize: Dimens.font13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: Dimens.font14,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),

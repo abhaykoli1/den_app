@@ -38,10 +38,12 @@ class RowdysDenApp extends StatelessWidget {
           (context, _) => MaterialApp(
             title: AppConfig.appName,
             debugShowCheckedModeBanner: false,
-            // Dark theme is the product default (design spec §2.1); header toggle flips it.
+            // Match the member app's charcoal, cream, gold, and green theme.
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: session.darkMode ? ThemeMode.dark : ThemeMode.light,
+            themeAnimationDuration: const Duration(milliseconds: 260),
+            themeAnimationCurve: Curves.easeOutCubic,
             builder:
                 (context, child) => MediaQuery(
                   data: MediaQuery.of(
